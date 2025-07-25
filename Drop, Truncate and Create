@@ -1,0 +1,8 @@
+
+IF OBJECT_ID(N'tempdb..#Temp_Inactive') IS NOT NULL
+	DROP TABLE #Temp_Inactive;
+
+
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[MERI].[tbl_Cardiac_Rehab_Assessments]') AND type in (N'U'))
+DROP TABLE [MERI].[tbl_Cardiac_Rehab_Assessments]
+GO
