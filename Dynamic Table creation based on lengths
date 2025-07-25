@@ -1,0 +1,49 @@
+IF OBJECT_ID('tempdb..#ColumnLengths') IS NOT NULL
+	DROP TABLE #ColumnLengths;
+
+CREATE TABLE #ColumnLengths (
+	ColumnName SYSNAME
+	,MaxLength INT
+	);
+
+DECLARE @TableName SYSNAME = 'tbl_Cardiac_Rehab_Assessments_2025';
+DECLARE @SchemaName SYSNAME = 'MERI';
+DECLARE @SQL NVARCHAR(MAX) = '';
+
+SELECT @SQL = STUFF((
+			SELECT ' UNION ALL SELECT ''' + name + ''', MAX(LEN(' + QUOTENAME(name) + ')) FROM ' + QUOTENAME(@SchemaName) + '.' + QUOTENAME(@TableName)
+			FROM sys.columns
+			WHERE object_id = OBJECT_ID(@SchemaName + '.' + @TableName)
+				AND system_type_id IN ( 167 ,175 ,231 ,239 )
+			FOR XML PATH('') ,TYPE ).value('.', 'NVARCHAR(MAX)'), 1, 11, '');
+
+INSERT INTO #ColumnLengths ( ColumnName ,MaxLength )
+EXEC sp_executesql @SQL;
+
+SELECT ColumnName
+	,MaxLength
+	,CASE 
+		WHEN MaxLength <= 10 THEN '[Nvarchar](10)'
+		WHEN MaxLength <= 25 THEN '[Nvarchar](25)'
+		WHEN MaxLength <= 50 THEN '[Nvarchar](50)'
+		WHEN MaxLength <= 100 THEN '[Nvarchar](100)'
+		WHEN MaxLength <= 200 THEN '[Nvarchar](200)'
+		WHEN MaxLength <= 500 THEN '[Nvarchar](500)'
+		WHEN MaxLength <= 1000 THEN '[Nvarchar](1000)'
+		WHEN MaxLength <= 4000 THEN '[Nvarchar](4000)'
+		ELSE '[Nvarchar](MAX)'
+		END AS SuggestedDataType
+	,CONCAT ( '[' ,ColumnName ,'] '
+		,CASE 
+			WHEN MaxLength <= 10 THEN '[Nvarchar](10)'
+			WHEN MaxLength <= 25 THEN '[Nvarchar](25)'
+			WHEN MaxLength <= 50 THEN '[Nvarchar](50)'
+			WHEN MaxLength <= 100 THEN '[Nvarchar](100)'
+			WHEN MaxLength <= 200 THEN '[Nvarchar](200)'
+			WHEN MaxLength <= 500 THEN '[Nvarchar](500)'
+			WHEN MaxLength <= 1000 THEN '[Nvarchar](1000)'
+			WHEN MaxLength <= 4000 THEN '[Nvarchar](4000)'
+			ELSE '[Nvarchar](MAX)' END
+		,' NULL , '
+		)
+FROM #ColumnLengths;
