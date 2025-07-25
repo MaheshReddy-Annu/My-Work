@@ -1,0 +1,1 @@
+Declare @Update_date Datetime = DATEADD(wk,DATEDIFF(wk,7,GETDATE()),6);
