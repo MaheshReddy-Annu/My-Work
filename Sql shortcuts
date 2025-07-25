@@ -1,1 +1,1 @@
-Date convert to just date:  convert(DATETIME, convert(VARCHAR(10), [start_date_time], 103), 105)
+Date convert to just date:  CONVERT(DATETIME, convert(VARCHAR(10), [start_date_time], 103), 105)
