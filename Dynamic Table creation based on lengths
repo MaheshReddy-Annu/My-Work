@@ -1,3 +1,7 @@
+DECLARE @TableName SYSNAME = 'tbl_Cardiac_Rehab_Assessments_2025';
+DECLARE @SchemaName SYSNAME = 'MERI';
+DECLARE @SQL NVARCHAR(MAX) = '';
+
 IF OBJECT_ID('tempdb..#ColumnLengths') IS NOT NULL
 	DROP TABLE #ColumnLengths;
 
@@ -5,10 +9,6 @@ CREATE TABLE #ColumnLengths (
 	ColumnName SYSNAME
 	,MaxLength INT
 	);
-
-DECLARE @TableName SYSNAME = 'tbl_Cardiac_Rehab_Assessments_2025';
-DECLARE @SchemaName SYSNAME = 'MERI';
-DECLARE @SQL NVARCHAR(MAX) = '';
 
 SELECT @SQL = STUFF((
 			SELECT ' UNION ALL SELECT ''' + name + ''', MAX(LEN(' + QUOTENAME(name) + ')) FROM ' + QUOTENAME(@SchemaName) + '.' + QUOTENAME(@TableName)
