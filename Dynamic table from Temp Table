@@ -1,0 +1,49 @@
+DECLARE @TableName SYSNAME = '#hold';
+DECLARE @SQL NVARCHAR(MAX) = '';
+
+-- Drop result holder if exists
+IF OBJECT_ID('tempdb..#ColumnAnalysis') IS NOT NULL
+    DROP TABLE #ColumnAnalysis;
+
+CREATE TABLE #ColumnAnalysis (
+    ColumnName SYSNAME,
+    MaxLength INT NULL,
+    SuggestedDataType NVARCHAR(50)
+);
+
+-- Build dynamic SQL to collect string column lengths
+SELECT @SQL = STUFF((
+    SELECT ' UNION ALL SELECT ''' + name + ''' AS ColumnName, MAX(LEN(' + QUOTENAME(name) + ')) AS MaxLength, ' +
+           'CASE ' +
+           'WHEN MAX(LEN(' + QUOTENAME(name) + ')) <= 10 THEN ''NVARCHAR(10)'' ' +
+           'WHEN MAX(LEN(' + QUOTENAME(name) + ')) <= 25 THEN ''NVARCHAR(25)'' ' +
+           'WHEN MAX(LEN(' + QUOTENAME(name) + ')) <= 50 THEN ''NVARCHAR(50)'' ' +
+           'WHEN MAX(LEN(' + QUOTENAME(name) + ')) <= 100 THEN ''NVARCHAR(100)'' ' +
+           'WHEN MAX(LEN(' + QUOTENAME(name) + ')) <= 200 THEN ''NVARCHAR(200)'' ' +
+           'WHEN MAX(LEN(' + QUOTENAME(name) + ')) <= 500 THEN ''NVARCHAR(500)'' ' +
+           'WHEN MAX(LEN(' + QUOTENAME(name) + ')) <= 1000 THEN ''NVARCHAR(1000)'' ' +
+           'WHEN MAX(LEN(' + QUOTENAME(name) + ')) <= 4000 THEN ''NVARCHAR(4000)'' ' +
+           'ELSE ''NVARCHAR(MAX)'' END ' +
+           'FROM ' + @TableName
+    FROM tempdb.sys.columns
+    WHERE object_id = OBJECT_ID('tempdb..#hold')
+      AND system_type_id IN (167, 175, 231, 239)  -- varchar, char, nvarchar, nchar
+    FOR XML PATH(''), TYPE
+).value('.', 'NVARCHAR(MAX)'), 1, 11, '');
+
+-- Insert string column analysis
+INSERT INTO #ColumnAnalysis (ColumnName, MaxLength, SuggestedDataType)
+EXEC sp_executesql @SQL;
+
+-- Add datetime/datetime2 columns with fixed suggestion
+INSERT INTO #ColumnAnalysis (ColumnName, MaxLength, SuggestedDataType)
+SELECT 
+    name AS ColumnName,
+    NULL AS MaxLength,
+    'DATETIME2(3)' AS SuggestedDataType
+FROM tempdb.sys.columns
+WHERE object_id = OBJECT_ID('tempdb..#hold')
+  AND system_type_id IN (61, 42)  -- datetime, datetime2
+
+-- Final output
+SELECT * FROM #ColumnAnalysis ORDER BY ColumnName;
