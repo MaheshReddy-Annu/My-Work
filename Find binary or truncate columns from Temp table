@@ -1,0 +1,50 @@
+
+-- Drop result table if exists
+IF OBJECT_ID('tempdb..#LengthCheck') IS NOT NULL DROP TABLE #LengthCheck;
+
+CREATE TABLE #LengthCheck (
+    ColumnName SYSNAME,
+    TargetLength INT,
+    MaxSourceLength INT
+);
+
+-- Cursor over target string columns
+DECLARE @col SYSNAME, @targetLen INT, @sql NVARCHAR(MAX);
+
+DECLARE col_cursor CURSOR LOCAL FAST_FORWARD FOR
+SELECT c.name, 
+       CASE WHEN t.name IN ('nvarchar', 'nchar') THEN c.max_length / 2 ELSE c.max_length END AS TargetLen
+FROM sys.columns c
+JOIN sys.types t ON c.user_type_id = t.user_type_id
+WHERE c.object_id = OBJECT_ID('[MERI].[tbl_Cardiac_Rehab_Assessments]')  -- 🟢 Change to your target table
+  AND t.name IN ('varchar', 'nvarchar', 'char', 'nchar');
+
+OPEN col_cursor;
+FETCH NEXT FROM col_cursor INTO @col, @targetLen;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @sql = '
+        INSERT INTO #LengthCheck (ColumnName, TargetLength, MaxSourceLength)
+        SELECT ''' + @col + ''', ' + CAST(@targetLen AS NVARCHAR) + ', MAX(LEN(CAST([' + @col + '] AS NVARCHAR(MAX))))
+        FROM #Temp_Hold
+        WHERE [' + @col + '] IS NOT NULL;
+    ';
+
+    -- Only run if column exists in #Temp_Hold
+    IF EXISTS (
+        SELECT 1 FROM tempdb.sys.columns 
+        WHERE object_id = OBJECT_ID('tempdb..#Temp_Hold') AND name = @col
+    )
+        EXEC sp_executesql @sql;
+
+    FETCH NEXT FROM col_cursor INTO @col, @targetLen;
+END
+
+CLOSE col_cursor;
+DEALLOCATE col_cursor;
+
+-- Final result: only columns that may be truncated
+SELECT * 
+FROM #LengthCheck
+WHERE MaxSourceLength > TargetLength;
