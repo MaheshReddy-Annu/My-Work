@@ -1,1 +1,7 @@
 Date convert to just date:  CONVERT(DATETIME, CONVERT(VARCHAR(10), [start_date_time], 103), 105)
+
+Get Age :
+[Current_age/Age_at_Death] = CASE 
+		WHEN isDeceased = 0 THEN (0 + Convert(CHAR(8), getdate(), 112) - Convert(CHAR(8), IPs.date_of_birth, 112)) / 10000
+		ELSE (0 + Convert(CHAR(8), isnull(date_of_death, getdate()), 112) - Convert(CHAR(8), IPs.date_of_birth, 112)) / 10000
+		END
